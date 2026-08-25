@@ -1,4 +1,2 @@
 # Fragments
-[[https://yipeeeeeeeeeeee.github.io/Fragments/
-](https://yipeeeeeeeeeeee.github.io/Fragments/)
-](https://yipeeeeeeeeeeee.github.io/Fragments/index.html)
+https://yipeeeeeeeeeeee.github.io/Fragments/index.html
