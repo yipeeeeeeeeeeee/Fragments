@@ -1,17 +1,58 @@
 <!DOCTYPE html>
 <html>
-	<head>
-	<link rel="stylesheet" href="fragment.css">
-	<title>FRAGMENT</title>
-	</head>
-	<body>
-	<h1>WELCOME TO FRAGMENT</h1>
-	<hr>
-	<h3>choose your first fragment</h3>
-	<div>
-	<button>Cindrake</button>
-	<button>Aquaphin</button>
-	<button>Florabbit</button>
-	</div>
+<head>
+    <link rel="stylesheet" href="fragment.css">
+	<script src="fragment.js"></script>
+    <title>FRAGMENT</title>
+</head>
+
+<body>
+
+    <!-- Starting screen -->
+    <div id="selection">
+        <h1>WELCOME TO FRAGMENT</h1>
+        <hr>
+        <h3>Choose your first Fragment</h3>
+
+        <button onclick="chooseFragment('Cindrake')">Cindrake</button>
+        <button onclick="chooseFragment('Aquaphin')">Aquaphin</button>
+        <button onclick="chooseFragment('Florabbit')">Florabbit</button>
+    </div>
+
+
+    <!-- Battle screen -->
+    <div id="battle" class="hidden">
+
+        <h2 id="enemyName">Wild Fragment</h2>
+        <p id="enemyHP">Enemy HP: 100</p>
+
+        <h3 id="playerName">Your Fragment</h3>
+        <p id="playerHP">Your HP: 100</p>
+
+        <button onclick="attack()">FIGHT</button>
+        <button onclick="useSkill()">SKILL</button>
+        <button onclick="capture()">CAPTURE</button>
+        <button onclick="retreat()">RETREAT</button>
+
+        <p id="message">Choose an action!</p>
+
+    </div>
+
+
+    <!-- Dodge screen -->
+    <div id="dodge" class="hidden">
+
+        <h2>DODGE!</h2>
+
+        <p>Use WASD or the arrow keys.</p>
+
+        <div id="dodgeBox">
+            <div id="player"></div>
+        </div>
+
+        <p id="dodgeMessage">Avoid the attack!</p>
+
+    </div>
+
 </body>
 </html>

@@ -1,0 +1,1491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FRAGMENT — Creature Battling RPG</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts for Retro Arcade Vibe -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-dark: #0a0b10;
+            --panel-bg: #121520;
+            --panel-border: #2a3148;
+            --accent-ember: #ff4757;
+            --accent-aqua: #1e90ff;
+            --accent-flora: #2ed573;
+            --accent-volt: #ffa502;
+            --accent-umbra: #8e44ad;
+            --accent-lux: #f1c40f;
+        }
+
+        body {
+            font-family: 'Chakra Petch', sans-serif;
+            background-color: var(--bg-dark);
+            color: #e2e8f0;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            overflow-x: hidden;
+        }
+
+        .font-pixel {
+            font-family: 'Press Start 2P', monospace;
+        }
+
+        /* Glassmorphism panel styling */
+        .fragment-card {
+            background: rgba(18, 21, 32, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .neon-border-ember { border-color: rgba(255, 71, 87, 0.5); box-shadow: 0 0 15px rgba(255, 71, 87, 0.2); }
+        .neon-border-aqua { border-color: rgba(30, 144, 255, 0.5); box-shadow: 0 0 15px rgba(30, 144, 255, 0.2); }
+        .neon-border-flora { border-color: rgba(46, 213, 115, 0.5); box-shadow: 0 0 15px rgba(46, 213, 115, 0.2); }
+        .neon-border-volt { border-color: rgba(255, 165, 2, 0.5); box-shadow: 0 0 15px rgba(255, 165, 2, 0.2); }
+        .neon-border-umbra { border-color: rgba(142, 68, 173, 0.5); box-shadow: 0 0 15px rgba(142, 68, 173, 0.2); }
+        .neon-border-lux { border-color: rgba(241, 196, 15, 0.5); box-shadow: 0 0 15px rgba(241, 196, 15, 0.2); }
+
+        /* Custom health bar animation */
+        .hp-bar-fill {
+            transition: width 0.4s ease-out, background-color 0.4s ease;
+        }
+
+        /* Retro Dodge Field Container */
+        #dodge-canvas {
+            background: radial-gradient(circle, #0f1423 0%, #05070c 100%);
+            border: 2px solid #3b82f6;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3), inset 0 0 15px rgba(0,0,0,0.8);
+        }
+
+        /* CRT Screen Scanlines effect */
+        .scanline-overlay {
+            background: linear-gradient(
+                rgba(18, 16, 16, 0) 50%, 
+                rgba(0, 0, 0, 0.25) 50%
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+        }
+
+        /* Button Hover & Active Effects */
+        .btn-action {
+            position: relative;
+            transition: all 0.15s ease;
+            overflow: hidden;
+        }
+        .btn-action:hover:not(:disabled) {
+            transform: translateY(-2px);
+            filter: brightness(1.2);
+        }
+        .btn-action:active:not(:disabled) {
+            transform: translateY(1px);
+        }
+
+        /* Float pulse animation for creature sprites */
+        @keyframes floatIdle {
+            0%, 100% { transform: translateY(0px) scale(1); }
+            50% { transform: translateY(-8px) scale(1.02); }
+        }
+        .animate-float {
+            animation: floatIdle 3.5s ease-in-out infinite;
+        }
+
+        /* Hit Shake Animation */
+        @keyframes damageShake {
+            0% { transform: translate(0, 0); }
+            20% { transform: translate(-8px, 5px); }
+            40% { transform: translate(8px, -5px); }
+            60% { transform: translate(-5px, 3px); }
+            80% { transform: translate(5px, -3px); }
+            100% { transform: translate(0, 0); }
+        }
+        .animate-shake {
+            animation: damageShake 0.4s ease-in-out;
+        }
+
+        /* Timing bar slider */
+        @keyframes timingBar {
+            0% { left: 0%; }
+            50% { left: 95%; }
+            100% { left: 0%; }
+        }
+        .timing-bar-cursor {
+            animation: timingBar 1.2s infinite linear;
+        }
+        .timing-paused {
+            animation-play-state: paused;
+        }
+
+        /* Hide scrollbars for slick look */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between items-center bg-slate-950 text-slate-100 p-2 sm:p-4 select-none">
+
+    <!-- Top Navigation / Stats Bar -->
+    <header class="w-full max-w-5xl flex justify-between items-center p-3 rounded-xl fragment-card border border-slate-800 mb-3">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-lg bg-indigo-600/30 border border-indigo-400 flex items-center justify-center font-bold text-indigo-400 text-xl font-pixel">
+                F
+            </div>
+            <div>
+                <h1 class="text-lg sm:text-xl font-bold tracking-wider text-slate-100 uppercase font-pixel">FRAGMENT</h1>
+                <p class="text-xs text-slate-400">Deep Core Rift Battler</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-4">
+            <div class="text-right hidden sm:block">
+                <span class="text-xs text-slate-400 block uppercase tracking-wider">Deepest Floor</span>
+                <span id="best-floor-txt" class="text-sm font-bold text-amber-400 font-pixel">Floor 1</span>
+            </div>
+            <div class="text-right">
+                <span class="text-xs text-slate-400 block uppercase tracking-wider">Fragments</span>
+                <span id="dust-count" class="text-sm font-bold text-cyan-400 font-pixel">0 Dust</span>
+            </div>
+            <button id="audio-toggle-btn" onclick="game.toggleAudio()" class="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition">
+                <svg id="audio-on-icon" class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.63 12 4.109 12 5v14c0 .891-1.077 1.37-1.707.707L5.586 15z"></path></svg>
+                <svg id="audio-off-icon" class="w-5 h-5 text-slate-500 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.63 12 4.109 12 5v14c0 .891-1.077 1.37-1.707.707L5.586 15zM17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path></svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN GAME VIEWPORT CONTAINER -->
+    <main id="app-container" class="w-full max-w-5xl flex-grow flex flex-col justify-center items-center relative">
+
+        <!-- SCREEN 1: STARTER SELECTION SCREEN -->
+        <section id="starter-screen" class="w-full flex flex-col items-center justify-center p-4 py-8 fragment-card rounded-2xl border border-slate-800 my-auto">
+            <div class="text-center mb-6">
+                <span class="text-xs font-bold tracking-widest text-indigo-400 uppercase bg-indigo-950/60 px-3 py-1 rounded-full border border-indigo-800">Initiation Protocol</span>
+                <h2 class="text-2xl sm:text-3xl font-extrabold mt-2 text-white font-pixel">CHOOSE YOUR STARTER FRAGMENT</h2>
+                <p class="text-slate-400 text-sm max-w-lg mx-auto mt-1">Each Fragment possesses unique elemental resonance, stats, and abilities. Select your primary companion to enter the Rift.</p>
+            </div>
+
+            <div id="starter-cards-container" class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl px-2">
+                <!-- Dynamically Populated Starters -->
+            </div>
+        </section>
+
+        <!-- SCREEN 2: OVERWORLD HUB SCREEN -->
+        <section id="hub-screen" class="w-full hidden flex-col items-center justify-between p-4 sm:p-6 fragment-card rounded-2xl border border-slate-800 my-auto min-h-[500px]">
+            <div class="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-800">
+                <div>
+                    <h2 class="text-xl sm:text-2xl font-bold font-pixel text-cyan-400" id="hub-floor-title">RIFT FLOOR 1</h2>
+                    <p class="text-xs text-slate-400">Prepare your squad before venturing deeper into wild Fragment territory.</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="game.openCodex()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-semibold rounded-lg border border-slate-700 flex items-center gap-1.5 text-slate-200">
+                        📖 Codex
+                    </button>
+                    <button onclick="game.restParty()" id="rest-btn" class="px-3 py-2 bg-emerald-950 hover:bg-emerald-900 border border-emerald-700 text-emerald-300 text-xs font-semibold rounded-lg flex items-center gap-1.5">
+                        💖 Rest & Heal (50 Dust)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Hub Center Grid: Active Party & Shop -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full my-6">
+                <!-- Active Party List -->
+                <div class="lg:col-span-7 flex flex-col">
+                    <h3 class="text-sm font-bold text-slate-300 uppercase tracking-wider mb-3 flex items-center justify-between">
+                        <span>Active Squad (<span id="party-count-txt">1</span>/6)</span>
+                        <span class="text-xs font-normal text-slate-400">Click to view/equip</span>
+                    </h3>
+                    <div id="party-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <!-- Party Cards Inserted Here -->
+                    </div>
+                </div>
+
+                <!-- Rift Shop / Supplies -->
+                <div class="lg:col-span-5 flex flex-col bg-slate-900/60 p-4 rounded-xl border border-slate-800/80">
+                    <h3 class="text-sm font-bold text-amber-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <span>🛍️ Rift Supply Terminal</span>
+                    </h3>
+                    <div id="shop-items-container" class="space-y-2 flex-grow">
+                        <!-- Shop items dynamically rendered -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Action: Venture Deeper -->
+            <div class="w-full pt-4 border-t border-slate-800 flex flex-col sm:flex-row gap-3 justify-between items-center">
+                <div class="text-xs text-slate-400">
+                    <span class="text-amber-400 font-semibold">Tip:</span> Enemy turns require real-time dodging! Stay light on your feet.
+                </div>
+                <button onclick="game.startEncounter()" class="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 font-pixel text-sm font-bold rounded-xl shadow-lg shadow-indigo-950/50 uppercase tracking-widest transform active:scale-95 transition">
+                    ⚔️ Venture into Floor <span id="next-floor-num">1</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- SCREEN 3: BATTLE ARENA SCREEN -->
+        <section id="battle-screen" class="w-full hidden flex-col justify-between p-3 sm:p-5 fragment-card rounded-2xl border border-slate-800 my-auto min-h-[580px] relative overflow-hidden">
+            <!-- CRT Scanline layer -->
+            <div class="absolute inset-0 scanline-overlay z-0"></div>
+
+            <!-- Top Header Status -->
+            <div class="relative z-10 w-full flex justify-between items-center text-xs font-pixel mb-2 bg-slate-900/80 p-2 rounded-lg border border-slate-800">
+                <span id="battle-stage-indicator" class="text-indigo-400">ENCOUNTER — FLOOR 1</span>
+                <span id="battle-turn-indicator" class="text-amber-400">YOUR TURN</span>
+            </div>
+
+            <!-- Battle Arena Visual Display (Enemy vs Player Active) -->
+            <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4 my-2">
+                
+                <!-- ENEMY FRAGMENT CONTAINER -->
+                <div id="enemy-card-box" class="p-4 rounded-xl bg-slate-900/90 border border-slate-800 relative flex flex-col justify-between transition-all">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h3 id="enemy-name" class="font-bold text-lg text-slate-100 font-pixel">WILD FRAGMENT</h3>
+                                <span id="enemy-type-badge" class="px-2 py-0.5 text-[10px] font-bold rounded bg-red-950 text-red-400 border border-red-800 uppercase">EMBER</span>
+                            </div>
+                            <span id="enemy-level" class="text-xs text-slate-400 font-mono">Lv. 1</span>
+                        </div>
+                        <div id="enemy-status-pills" class="flex gap-1"></div>
+                    </div>
+
+                    <!-- Enemy Canvas / Sprite Visual -->
+                    <div class="my-4 flex justify-center items-center h-28 relative">
+                        <div id="enemy-sprite-wrapper" class="animate-float relative">
+                            <svg id="enemy-svg" class="w-24 h-24 drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]" viewBox="0 0 100 100">
+                                <!-- Dynamic SVG shape drawn here -->
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Enemy HP Bar -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-1 font-mono">
+                            <span class="text-slate-400">HP</span>
+                            <span id="enemy-hp-text" class="text-slate-200">50 / 50</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden p-0.5 border border-slate-700">
+                            <div id="enemy-hp-bar" class="hp-bar-fill h-full bg-emerald-500 rounded-full" style="width: 100%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PLAYER ACTIVE FRAGMENT CONTAINER -->
+                <div id="player-card-box" class="p-4 rounded-xl bg-slate-900/90 border border-slate-800 relative flex flex-col justify-between transition-all">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h3 id="player-name" class="font-bold text-lg text-slate-100 font-pixel">YOUR FRAGMENT</h3>
+                                <span id="player-type-badge" class="px-2 py-0.5 text-[10px] font-bold rounded bg-blue-950 text-blue-400 border border-blue-800 uppercase">AQUA</span>
+                            </div>
+                            <span id="player-level" class="text-xs text-slate-400 font-mono">Lv. 1</span>
+                        </div>
+                        <div id="player-status-pills" class="flex gap-1"></div>
+                    </div>
+
+                    <!-- Player Canvas / Sprite Visual -->
+                    <div class="my-4 flex justify-center items-center h-28 relative">
+                        <div id="player-sprite-wrapper" class="animate-float relative">
+                            <svg id="player-svg" class="w-24 h-24 drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]" viewBox="0 0 100 100">
+                                <!-- Dynamic SVG shape drawn here -->
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Player HP & Energy Bars -->
+                    <div class="space-y-1.5">
+                        <div>
+                            <div class="flex justify-between text-xs mb-0.5 font-mono">
+                                <span class="text-slate-400">HP</span>
+                                <span id="player-hp-text" class="text-slate-200">60 / 60</span>
+                            </div>
+                            <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden p-0.5 border border-slate-700">
+                                <div id="player-hp-bar" class="hp-bar-fill h-full bg-emerald-500 rounded-full" style="width: 100%;"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-[10px] mb-0.5 font-mono">
+                                <span class="text-slate-400">EXP</span>
+                                <span id="player-exp-text" class="text-slate-400">0 / 100</span>
+                            </div>
+                            <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden border border-slate-700">
+                                <div id="player-exp-bar" class="h-full bg-amber-400 transition-all duration-300" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Combat Event Log -->
+            <div class="relative z-10 bg-slate-950/90 border border-slate-800 rounded-xl p-3 h-20 overflow-y-auto no-scrollbar mb-3 text-xs sm:text-sm font-mono text-slate-300" id="battle-log">
+                <p class="text-indigo-400 font-semibold">[Battle Started] Wild creature detected!</p>
+            </div>
+
+            <!-- ACTION CONTROL PANEL (Main Menu Options) -->
+            <div class="relative z-10 w-full">
+                <!-- MAIN ACTION BUTTONS: FIGHT / SKILL / CAPTURE / SWITCH / RETREAT -->
+                <div id="battle-main-menu" class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <button onclick="game.battle.showFightMinigame()" id="btn-fight" class="btn-action p-3 rounded-xl bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 text-white font-pixel text-xs sm:text-sm font-bold shadow-lg shadow-red-950/50 flex items-center justify-center gap-2">
+                        ⚔️ FIGHT
+                    </button>
+                    <button onclick="game.battle.showSkillMenu()" id="btn-skill" class="btn-action p-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-700 hover:from-cyan-500 hover:to-blue-600 text-white font-pixel text-xs sm:text-sm font-bold shadow-lg shadow-cyan-950/50 flex items-center justify-center gap-2">
+                        ✨ SKILLS
+                    </button>
+                    <button onclick="game.battle.showCaptureMenu()" id="btn-capture" class="btn-action p-3 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-white font-pixel text-xs sm:text-sm font-bold shadow-lg shadow-amber-950/50 flex items-center justify-center gap-2">
+                        🔮 CAPTURE
+                    </button>
+                    <button onclick="game.battle.showSwitchMenu()" id="btn-switch" class="btn-action p-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-pixel text-xs sm:text-sm font-bold shadow-lg shadow-emerald-950/50 flex items-center justify-center gap-2">
+                        🔄 SQUAD
+                    </button>
+                </div>
+
+                <!-- SUBMENU: FIGHT (TIMING / PRECISION ATTACK) -->
+                <div id="battle-fight-menu" class="hidden flex-col gap-2 bg-slate-900/90 p-3 rounded-xl border border-slate-800">
+                    <div class="flex justify-between items-center text-xs font-mono text-slate-300">
+                        <span>Click / Tap <span class="text-amber-400 font-bold">STRIKE</span> when cursor reaches the green zone for CRITICAL hit!</span>
+                        <button onclick="game.battle.backToMainMenu()" class="text-slate-400 hover:text-white">✕ Back</button>
+                    </div>
+                    <!-- Timing Bar UI -->
+                    <div class="w-full bg-slate-950 h-8 rounded-lg relative overflow-hidden border border-slate-700 flex items-center px-1 cursor-pointer" onclick="game.battle.executeTimingAttack()">
+                        <div class="absolute inset-y-0 left-[40%] right-[40%] bg-emerald-500/30 border-x-2 border-emerald-400 flex items-center justify-center">
+                            <span class="text-[9px] text-emerald-300 font-bold tracking-widest uppercase">CRIT</span>
+                        </div>
+                        <div id="timing-cursor" class="absolute top-1 bottom-1 w-2 bg-white rounded-full shadow-[0_0_8px_#ffffff] timing-bar-cursor"></div>
+                    </div>
+                    <button onclick="game.battle.executeTimingAttack()" class="w-full py-2 bg-red-600 hover:bg-red-500 text-white font-pixel text-xs font-bold rounded-lg shadow uppercase">
+                        💥 STRIKE!
+                    </button>
+                </div>
+
+                <!-- SUBMENU: SKILL SELECTION MENU -->
+                <div id="battle-skill-menu" class="hidden flex-col gap-2 bg-slate-900/90 p-3 rounded-xl border border-slate-800">
+                    <div class="flex justify-between items-center text-xs font-mono text-slate-300">
+                        <span>Select a Fragment Skill:</span>
+                        <button onclick="game.battle.backToMainMenu()" class="text-slate-400 hover:text-white">✕ Back</button>
+                    </div>
+                    <div id="skills-list-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- SUBMENU: CAPTURE SELECTION MENU -->
+                <div id="battle-capture-menu" class="hidden flex-col gap-2 bg-slate-900/90 p-3 rounded-xl border border-slate-800">
+                    <div class="flex justify-between items-center text-xs font-mono text-slate-300">
+                        <span>Select Capture Device (Wild HP: <span id="capture-hp-percentage" class="text-amber-400 font-bold">100%</span>):</span>
+                        <button onclick="game.battle.backToMainMenu()" class="text-slate-400 hover:text-white">✕ Back</button>
+                    </div>
+                    <div id="capture-orbs-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- SUBMENU: SQUAD SWITCH MENU -->
+                <div id="battle-switch-menu" class="hidden flex-col gap-2 bg-slate-900/90 p-3 rounded-xl border border-slate-800">
+                    <div class="flex justify-between items-center text-xs font-mono text-slate-300">
+                        <span>Select Fragment to tag in:</span>
+                        <button onclick="game.battle.backToMainMenu()" class="text-slate-400 hover:text-white">✕ Back</button>
+                    </div>
+                    <div id="squad-switch-grid" class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- DODGE PHASE INTERACTIVE OVERLAY (UNDERTALE COMBAT PHASE) -->
+            <div id="dodge-overlay" class="absolute inset-0 bg-slate-950/95 z-30 hidden flex-col items-center justify-center p-3 transition-opacity duration-300">
+                <div class="text-center mb-2">
+                    <span id="dodge-title" class="text-xs font-bold font-pixel text-red-400 uppercase tracking-wider block">⚠️ ENEMY ATTACK INCOMING!</span>
+                    <span class="text-[11px] text-slate-400">Use <strong class="text-amber-300">WASD / Arrow Keys</strong> or <strong class="text-amber-300">Drag/Touch</strong> to dodge projectiles!</span>
+                </div>
+
+                <!-- Dodge Box Canvas Area -->
+                <div class="relative">
+                    <canvas id="dodge-canvas" width="300" height="240" class="rounded-xl cursor-crosshair"></canvas>
+
+                    <!-- Touch D-Pad Overlay for Mobile devices -->
+                    <div class="mt-2 sm:hidden flex justify-center gap-2">
+                        <button id="touch-left" class="p-3 bg-slate-800 text-white rounded-lg active:bg-indigo-600 font-bold">◀</button>
+                        <div class="flex flex-col gap-2">
+                            <button id="touch-up" class="p-3 bg-slate-800 text-white rounded-lg active:bg-indigo-600 font-bold">▲</button>
+                            <button id="touch-down" class="p-3 bg-slate-800 text-white rounded-lg active:bg-indigo-600 font-bold">▼</button>
+                        </div>
+                        <button id="touch-right" class="p-3 bg-slate-800 text-white rounded-lg active:bg-indigo-600 font-bold">▶</button>
+                    </div>
+                </div>
+
+                <!-- Dodge Timer Bar -->
+                <div class="w-[300px] mt-3">
+                    <div class="flex justify-between text-[10px] font-mono text-slate-400 mb-1">
+                        <span>SURVIVE TIME</span>
+                        <span id="dodge-timer-text">4.0s</span>
+                    </div>
+                    <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden border border-slate-700">
+                        <div id="dodge-timer-bar" class="h-full bg-indigo-500 transition-all duration-100" style="width: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- MODAL: CODEX / ENCYCLOPEDIA -->
+        <div id="codex-modal" class="fixed inset-0 bg-slate-950/80 backdrop-filter backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+            <div class="fragment-card bg-slate-900 w-full max-w-2xl rounded-2xl border border-slate-800 p-5 flex flex-col max-h-[85vh]">
+                <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+                    <h3 class="text-lg font-bold font-pixel text-indigo-400">📖 FRAGMENT CODEX</h3>
+                    <button onclick="game.closeCodex()" class="text-slate-400 hover:text-white font-bold p-1">✕</button>
+                </div>
+                <div id="codex-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 overflow-y-auto my-4 p-1">
+                    <!-- Populated dynamically -->
+                </div>
+                <button onclick="game.closeCodex()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-bold text-slate-300">Close Codex</button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="w-full max-w-5xl text-center text-xs text-slate-500 py-2">
+        FRAGMENT &copy; 2026 — Web Audio Synthesized Combat Engine
+    </footer>
+
+    <script>
+    class AudioEngine {
+        constructor() {
+            this.ctx = null;
+            this.enabled = true;
+        }
+
+        init() {
+            if (!this.ctx) {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (AudioCtx) this.ctx = new AudioCtx();
+            }
+        }
+
+        playTone(freq, type = 'sine', duration = 0.1, gainVal = 0.1) {
+            if (!this.enabled) return;
+            this.init();
+            if (!this.ctx) return;
+
+            try {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            } catch (e) {
+                // Audio context resume guard
+            }
+        }
+
+        playHit() {
+            this.playTone(120, 'sawtooth', 0.15, 0.2);
+            setTimeout(() => this.playTone(80, 'square', 0.2, 0.25), 50);
+        }
+
+        playDodgeHit() {
+            this.playTone(350, 'sawtooth', 0.08, 0.15);
+        }
+
+        playSelect() {
+            this.playTone(523.25, 'sine', 0.08, 0.1); // C5
+        }
+
+        playCrit() {
+            this.playTone(659.25, 'triangle', 0.1, 0.2); // E5
+            setTimeout(() => this.playTone(880, 'triangle', 0.2, 0.25), 80); // A5
+        }
+
+        playCaptureSuccess() {
+            const notes = [440, 554.37, 659.25, 880];
+            notes.forEach((freq, idx) => {
+                setTimeout(() => this.playTone(freq, 'sine', 0.2, 0.15), idx * 120);
+            });
+        }
+    }
+
+    const TYPES = {
+        EMBER: { name: 'Ember', color: 'text-red-400', bg: 'bg-red-950', border: 'border-red-800', weakTo: 'AQUA', strongAgainst: 'FLORA' },
+        AQUA:  { name: 'Aqua',  color: 'text-blue-400', bg: 'bg-blue-950', border: 'border-blue-800', weakTo: 'VOLT', strongAgainst: 'EMBER' },
+        FLORA: { name: 'Flora', color: 'text-emerald-400', bg: 'bg-emerald-950', border: 'border-emerald-800', weakTo: 'EMBER', strongAgainst: 'AQUA' },
+        VOLT:  { name: 'Volt',  color: 'text-amber-400', bg: 'bg-amber-950', border: 'border-amber-800', weakTo: 'FLORA', strongAgainst: 'AQUA' },
+        UMBRA: { name: 'Umbra', color: 'text-purple-400', bg: 'bg-purple-950', border: 'border-purple-800', weakTo: 'LUX', strongAgainst: 'LUX' },
+        LUX:   { name: 'Lux',   color: 'text-yellow-300', bg: 'bg-yellow-950', border: 'border-yellow-800', weakTo: 'UMBRA', strongAgainst: 'UMBRA' }
+    };
+
+    // Creature Blueprints
+    const CREATURE_DATABASE = [
+        {
+            id: 'pyron',
+            name: 'Pyron',
+            type: 'EMBER',
+            baseHp: 52,
+            baseAtk: 14,
+            baseDef: 8,
+            baseSpeed: 12,
+            description: 'A fiery core enclosed in shimmering volcanic quartz.',
+            skills: [
+                { name: 'Flame Burst', power: 15, type: 'EMBER', desc: 'Direct heat blast.' },
+                { name: 'Overheat', power: 25, type: 'EMBER', desc: 'High-power eruption.' },
+                { name: 'Ignite', power: 8, type: 'EMBER', desc: 'Slight burn impact.', heal: 0 }
+            ],
+            svg: (color) => `<circle cx="50" cy="50" r="30" fill="${color}" opacity="0.3"/><polygon points="50,15 80,75 20,75" fill="${color}"/><circle cx="50" cy="50" r="12" fill="#fff"/>`
+        },
+        {
+            id: 'hydraxis',
+            name: 'Hydraxis',
+            type: 'AQUA',
+            baseHp: 60,
+            baseAtk: 10,
+            baseDef: 12,
+            baseSpeed: 9,
+            description: 'Fluidic crystal organism that reshapes light through liquid resonance.',
+            skills: [
+                { name: 'Hydro Pulse', power: 14, type: 'AQUA', desc: 'Dense water surge.' },
+                { name: 'Tide Barrier', power: 0, type: 'AQUA', desc: 'Heals self for 20 HP.', heal: 20 },
+                { name: 'Torrent Spike', power: 22, type: 'AQUA', desc: 'High pressure stream.' }
+            ],
+            svg: (color) => `<path d="M50 15 C20 50, 20 80, 50 85 C80 80, 80 50, 50 15 Z" fill="${color}"/><circle cx="50" cy="55" r="15" fill="#e0f2fe"/>`
+        },
+        {
+            id: 'sylvan',
+            name: 'Sylvan',
+            type: 'FLORA',
+            baseHp: 58,
+            baseAtk: 11,
+            baseDef: 11,
+            baseSpeed: 10,
+            description: 'Woven moss and bioluminescent floral weaves that thrive on solar energy.',
+            skills: [
+                { name: 'Vine Lash', power: 13, type: 'FLORA', desc: 'Rapid botanical whip.' },
+                { name: 'Photosynthesis', power: 0, type: 'FLORA', desc: 'Regenerates 25 HP.', heal: 25 },
+                { name: 'Thorn Volley', power: 20, type: 'FLORA', desc: 'Sharp needle burst.' }
+            ],
+            svg: (color) => `<rect x="25" y="25" width="50" height="50" rx="15" fill="${color}"/><circle cx="50" cy="50" r="18" fill="#dcfce7"/><path d="M50 20 L50 80 M20 50 L80 50" stroke="#166534" stroke-width="4"/>`
+        },
+        {
+            id: 'voltron',
+            name: 'Voltron',
+            type: 'VOLT',
+            baseHp: 48,
+            baseAtk: 15,
+            baseDef: 7,
+            baseSpeed: 16,
+            description: 'A buzzing cluster of ionized particles moving at shocking speeds.',
+            skills: [
+                { name: 'Spark Arc', power: 16, type: 'VOLT', desc: 'Instant electrical discharge.' },
+                { name: 'Overcharge', power: 28, type: 'VOLT', desc: 'Heavy surge.' }
+            ],
+            svg: (color) => `<polygon points="50,10 65,40 52,40 68,90 32,50 48,50" fill="${color}"/><circle cx="50" cy="50" r="8" fill="#fef08a"/>`
+        },
+        {
+            id: 'gloomwing',
+            name: 'Gloomwing',
+            type: 'UMBRA',
+            baseHp: 55,
+            baseAtk: 13,
+            baseDef: 10,
+            baseSpeed: 11,
+            description: 'A shadowy construct born from the deepest crevices of the Rift.',
+            skills: [
+                { name: 'Shadow Siphon', power: 12, type: 'UMBRA', desc: 'Deals damage & steals 10 HP.', heal: 10 },
+                { name: 'Void Strike', power: 24, type: 'UMBRA', desc: 'Dark energy explosion.' }
+            ],
+            svg: (color) => `<path d="M10 50 Q50 10 90 50 Q50 90 10 50 Z" fill="${color}"/><circle cx="50" cy="50" r="12" fill="#581c87"/>`
+        },
+        {
+            id: 'lumion',
+            name: 'Lumion',
+            type: 'LUX',
+            baseHp: 65,
+            baseAtk: 12,
+            baseDef: 14,
+            baseSpeed: 8,
+            description: 'A radiant prism radiating pure harmonic light energy.',
+            skills: [
+                { name: 'Prism Ray', power: 15, type: 'LUX', desc: 'Focused beam of light.' },
+                { name: 'Solar Grace', power: 0, type: 'LUX', desc: 'Heals 30 HP.', heal: 30 }
+            ],
+            svg: (color) => `<polygon points="50,15 85,80 15,80" fill="${color}"/><polygon points="50,30 70,70 30,70" fill="#fef9c3"/>`
+        }
+    ];
+
+    class FragmentInstance {
+        constructor(blueprint, level = 1) {
+            this.id = blueprint.id + '_' + Math.random().toString(36).substr(2, 5);
+            this.blueprintId = blueprint.id;
+            this.name = blueprint.name;
+            this.type = blueprint.type;
+            this.level = level;
+            
+            // Calculate stats based on level
+            this.maxHp = Math.floor(blueprint.baseHp + (level - 1) * 8);
+            this.hp = this.maxHp;
+            this.atk = Math.floor(blueprint.baseAtk + (level - 1) * 2.5);
+            this.def = Math.floor(blueprint.baseDef + (level - 1) * 2);
+            this.speed = Math.floor(blueprint.baseSpeed + (level - 1) * 1.5);
+            
+            this.exp = 0;
+            this.maxExp = level * 50;
+            this.skills = JSON.parse(JSON.stringify(blueprint.skills));
+            this.description = blueprint.description;
+            this.svgFn = blueprint.svg;
+        }
+
+        gainExp(amount) {
+            this.exp += amount;
+            let leveledUp = false;
+            while (this.exp >= this.maxExp) {
+                this.exp -= this.maxExp;
+                this.level++;
+                this.maxExp = this.level * 50;
+                this.maxHp += 8;
+                this.hp = Math.min(this.hp + 8, this.maxHp);
+                this.atk += 3;
+                this.def += 2;
+                this.speed += 2;
+                leveledUp = true;
+            }
+            return leveledUp;
+        }
+
+        get SVGColor() {
+            switch(this.type) {
+                case 'EMBER': return '#ff4757';
+                case 'AQUA': return '#1e90ff';
+                case 'FLORA': return '#2ed573';
+                case 'VOLT': return '#ffa502';
+                case 'UMBRA': return '#8e44ad';
+                case 'LUX': return '#f1c40f';
+                default: return '#94a3b8';
+            }
+        }
+    }
+
+    class DodgeEngine {
+        constructor(onComplete) {
+            this.canvas = document.getElementById('dodge-canvas');
+            this.ctx = this.canvas.getContext('2d');
+            this.overlay = document.getElementById('dodge-overlay');
+            this.timerBar = document.getElementById('dodge-timer-bar');
+            this.timerText = document.getElementById('dodge-timer-text');
+            this.onComplete = onComplete;
+
+            this.soul = { x: 150, y: 120, radius: 6, speed: 3.5, hitCount: 0 };
+            this.projectiles = [];
+            this.keys = {};
+            this.active = false;
+            this.duration = 4.0; // seconds
+            this.timeRemaining = 4.0;
+            this.lastTime = 0;
+            this.enemyType = 'EMBER';
+
+            this.setupControls();
+        }
+
+        setupControls() {
+            window.addEventListener('keydown', (e) => {
+                if (this.active) this.keys[e.key.toLowerCase()] = true;
+            });
+            window.addEventListener('keyup', (e) => {
+                if (this.active) this.keys[e.key.toLowerCase()] = false;
+            });
+
+            // Touch Drag setup for mobile
+            let isDragging = false;
+            const handleTouch = (e) => {
+                if (!this.active) return;
+                const rect = this.canvas.getBoundingClientRect();
+                const touch = e.touches[0];
+                if (touch) {
+                    this.soul.x = Math.max(10, Math.min(this.canvas.width - 10, touch.clientX - rect.left));
+                    this.soul.y = Math.max(10, Math.min(this.canvas.height - 10, touch.clientY - rect.top));
+                }
+            };
+
+            this.canvas.addEventListener('touchstart', (e) => { isDragging = true; handleTouch(e); });
+            this.canvas.addEventListener('touchmove', (e) => { if (isDragging) handleTouch(e); });
+            this.canvas.addEventListener('touchend', () => { isDragging = false; });
+
+            // Mobile On-screen buttons
+            const bindTouchBtn = (id, keyName) => {
+                const btn = document.getElementById(id);
+                if (!btn) return;
+                btn.addEventListener('touchstart', (e) => { e.preventDefault(); this.keys[keyName] = true; });
+                btn.addEventListener('touchend', (e) => { e.preventDefault(); this.keys[keyName] = false; });
+            };
+            bindTouchBtn('touch-up', 'arrowup');
+            bindTouchBtn('touch-down', 'arrowdown');
+            bindTouchBtn('touch-left', 'arrowleft');
+            bindTouchBtn('touch-right', 'arrowright');
+        }
+
+        start(enemyType, difficultyLevel) {
+            this.enemyType = enemyType;
+            this.soul.x = this.canvas.width / 2;
+            this.soul.y = this.canvas.height / 2;
+            this.soul.hitCount = 0;
+            this.projectiles = [];
+            this.duration = 4.0 + Math.min(2.0, difficultyLevel * 0.2);
+            this.timeRemaining = this.duration;
+            this.active = true;
+
+            this.overlay.classList.remove('hidden');
+            this.overlay.classList.add('flex');
+
+            this.lastTime = performance.now();
+            requestAnimationFrame((ts) => this.loop(ts));
+        }
+
+        spawnProjectiles() {
+            // Spawn patterns based on creature type
+            if (Math.random() < 0.15) {
+                const p = {
+                    x: Math.random() * this.canvas.width,
+                    y: 0,
+                    vx: (Math.random() - 0.5) * 2,
+                    vy: 2 + Math.random() * 2,
+                    radius: 4 + Math.random() * 4,
+                    color: this.getTypeColor()
+                };
+
+                if (this.enemyType === 'AQUA') {
+                    p.vx = Math.sin(Date.now() / 200) * 2.5;
+                } else if (this.enemyType === 'VOLT') {
+                    p.vy *= 1.8;
+                } else if (this.enemyType === 'UMBRA') {
+                    // Homing towards soul
+                    const angle = Math.atan2(this.soul.y - p.y, this.soul.x - p.x);
+                    p.vx = Math.cos(angle) * 2.2;
+                    p.vy = Math.sin(angle) * 2.2;
+                }
+
+                this.projectiles.push(p);
+            }
+        }
+
+        getTypeColor() {
+            switch(this.enemyType) {
+                case 'EMBER': return '#ff4757';
+                case 'AQUA': return '#1e90ff';
+                case 'FLORA': return '#2ed573';
+                case 'VOLT': return '#ffa502';
+                case 'UMBRA': return '#a855f7';
+                case 'LUX': return '#fef08a';
+                default: return '#3b82f6';
+            }
+        }
+
+        loop(timestamp) {
+            if (!this.active) return;
+
+            const dt = (timestamp - this.lastTime) / 1000;
+            this.lastTime = timestamp;
+
+            this.timeRemaining -= dt;
+            const pct = Math.max(0, (this.timeRemaining / this.duration) * 100);
+            this.timerBar.style.width = `${pct}%`;
+            this.timerText.textContent = `${Math.max(0, this.timeRemaining).toFixed(1)}s`;
+
+            // Soul movement
+            if (this.keys['arrowleft'] || this.keys['a']) this.soul.x -= this.soul.speed;
+            if (this.keys['arrowright'] || this.keys['d']) this.soul.x += this.soul.speed;
+            if (this.keys['arrowup'] || this.keys['w']) this.soul.y -= this.soul.speed;
+            if (this.keys['arrowdown'] || this.keys['s']) this.soul.y += this.soul.speed;
+
+            // Clamp inside canvas
+            this.soul.x = Math.max(this.soul.radius, Math.min(this.canvas.width - this.soul.radius, this.soul.x));
+            this.soul.y = Math.max(this.soul.radius, Math.min(this.canvas.height - this.soul.radius, this.soul.y));
+
+            // Spawning & Updating Projectiles
+            this.spawnProjectiles();
+
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+            // Draw dodge box inner grid lines
+            this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            this.ctx.lineWidth = 1;
+            for (let x = 0; x < this.canvas.width; x += 20) {
+                this.ctx.beginPath(); this.ctx.moveTo(x, 0); this.ctx.lineTo(x, this.canvas.height); this.ctx.stroke();
+            }
+
+            // Draw Soul (Player Heart/Diamond)
+            this.ctx.fillStyle = '#ff4757';
+            this.ctx.shadowColor = '#ff4757';
+            this.ctx.shadowBlur = 10;
+            this.ctx.beginPath();
+            this.ctx.arc(this.soul.x, this.soul.y, this.soul.radius, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.shadowBlur = 0;
+
+            // Update & Draw Projectiles
+            for (let i = this.projectiles.length - 1; i >= 0; i--) {
+                const p = this.projectiles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+
+                // Render Projectile
+                this.ctx.fillStyle = p.color;
+                this.ctx.beginPath();
+                this.ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                this.ctx.fill();
+
+                // Collision Check
+                const dx = p.x - this.soul.x;
+                const dy = p.y - this.soul.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < p.radius + this.soul.radius) {
+                    this.soul.hitCount++;
+                    game.audio.playDodgeHit();
+                    this.projectiles.splice(i, 1);
+
+                    // Visual feedback on hit
+                    this.ctx.fillStyle = 'rgba(255,0,0,0.3)';
+                    this.ctx.fillRect(0,0,this.canvas.width, this.canvas.height);
+                    continue;
+                }
+
+                // Remove out of bounds
+                if (p.y > this.canvas.height + 10 || p.x < -10 || p.x > this.canvas.width + 10) {
+                    this.projectiles.splice(i, 1);
+                }
+            }
+
+            if (this.timeRemaining <= 0) {
+                this.active = false;
+                this.overlay.classList.add('hidden');
+                this.overlay.classList.remove('flex');
+                this.onComplete(this.soul.hitCount);
+            } else {
+                requestAnimationFrame((ts) => this.loop(ts));
+            }
+        }
+    }
+
+    class GameController {
+        constructor() {
+            this.audio = new AudioEngine();
+            this.floor = 1;
+            this.bestFloor = 1;
+            this.dust = 100;
+            this.party = [];
+            this.activePartyIndex = 0;
+            this.capturedCodex = new Set();
+            this.items = {
+                captureOrb: 3,
+                hyperOrb: 1,
+                healthGel: 2
+            };
+
+            this.dodgeEngine = new DodgeEngine((hits) => this.battle.resolveEnemyAttack(hits));
+            this.battle = new BattleController(this);
+        }
+
+        init() {
+            this.renderStarterScreen();
+            this.updateHeaderUI();
+        }
+
+        toggleAudio() {
+            this.audio.enabled = !this.audio.enabled;
+            document.getElementById('audio-on-icon').classList.toggle('hidden', !this.audio.enabled);
+            document.getElementById('audio-off-icon').classList.toggle('hidden', this.audio.enabled);
+        }
+
+        updateHeaderUI() {
+            document.getElementById('best-floor-txt').textContent = `Floor ${this.bestFloor}`;
+            document.getElementById('dust-count').textContent = `${this.dust} Dust`;
+        }
+
+        renderStarterScreen() {
+            const container = document.getElementById('starter-cards-container');
+            container.innerHTML = '';
+
+            const starters = CREATURE_DATABASE.slice(0, 3);
+            starters.forEach((blueprint) => {
+                const tempFrag = new FragmentInstance(blueprint, 1);
+                const typeInfo = TYPES[tempFrag.type];
+
+                const card = document.createElement('div');
+                card.className = `fragment-card p-5 rounded-xl border ${typeInfo.border} hover:scale-105 transition duration-300 flex flex-col justify-between cursor-pointer`;
+                card.onclick = () => this.selectStarter(blueprint);
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-bold px-2 py-0.5 rounded ${typeInfo.bg} ${typeInfo.color} uppercase border ${typeInfo.border}">${typeInfo.name}</span>
+                            <span class="text-xs font-mono text-slate-400">STARTER</span>
+                        </div>
+                        <h3 class="text-xl font-bold font-pixel text-slate-100">${tempFrag.name}</h3>
+                        <p class="text-xs text-slate-400 mt-2">${tempFrag.description}</p>
+
+                        <div class="my-4 flex justify-center">
+                            <svg class="w-20 h-20" viewBox="0 0 100 100">
+                                ${tempFrag.svgFn(tempFrag.SVGColor)}
+                            </svg>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 text-xs font-mono my-2 bg-slate-900/60 p-2 rounded">
+                            <div>HP: <span class="text-emerald-400">${tempFrag.maxHp}</span></div>
+                            <div>ATK: <span class="text-red-400">${tempFrag.atk}</span></div>
+                            <div>DEF: <span class="text-blue-400">${tempFrag.def}</span></div>
+                            <div>SPD: <span class="text-amber-400">${tempFrag.speed}</span></div>
+                        </div>
+                    </div>
+                    <button class="w-full py-2 mt-4 bg-indigo-600 hover:bg-indigo-500 text-white font-pixel text-xs rounded-lg font-bold">SELECT ${tempFrag.name.toUpperCase()}</button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        selectStarter(blueprint) {
+            this.audio.playSelect();
+            const starter = new FragmentInstance(blueprint, 1);
+            this.party.push(starter);
+            this.capturedCodex.add(blueprint.id);
+
+            document.getElementById('starter-screen').classList.add('hidden');
+            document.getElementById('hub-screen').classList.remove('hidden');
+            document.getElementById('hub-screen').classList.add('flex');
+
+            this.updateHubUI();
+        }
+
+        updateHubUI() {
+            document.getElementById('hub-floor-title').textContent = `RIFT FLOOR ${this.floor}`;
+            document.getElementById('next-floor-num').textContent = this.floor;
+            document.getElementById('party-count-txt').textContent = this.party.length;
+            this.updateHeaderUI();
+
+            // Render Party Cards
+            const partyContainer = document.getElementById('party-list');
+            partyContainer.innerHTML = '';
+
+            this.party.forEach((frag, idx) => {
+                const typeInfo = TYPES[frag.type];
+                const card = document.createElement('div');
+                card.className = `p-3 rounded-xl bg-slate-900/90 border ${idx === this.activePartyIndex ? 'border-indigo-500 ring-2 ring-indigo-500/30' : 'border-slate-800'} flex items-center justify-between cursor-pointer hover:border-slate-700`;
+                card.onclick = () => {
+                    this.activePartyIndex = idx;
+                    this.updateHubUI();
+                };
+
+                card.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <svg class="w-10 h-10 flex-shrink-0" viewBox="0 0 100 100">
+                            ${frag.svgFn(frag.SVGColor)}
+                        </svg>
+                        <div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-bold text-sm text-slate-100 font-pixel">${frag.name}</span>
+                                <span class="text-[10px] font-mono text-slate-400">Lv.${frag.level}</span>
+                            </div>
+                            <div class="text-[10px] font-mono text-slate-400">HP: ${frag.hp}/${frag.maxHp}</div>
+                        </div>
+                    </div>
+                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${typeInfo.bg} ${typeInfo.color}">${typeInfo.name}</span>
+                `;
+                partyContainer.appendChild(card);
+            });
+
+            // Render Shop
+            const shopContainer = document.getElementById('shop-items-container');
+            shopContainer.innerHTML = `
+                <div class="p-2 bg-slate-950/60 rounded-lg flex justify-between items-center border border-slate-800">
+                    <div>
+                        <div class="text-xs font-bold text-slate-200">🔮 Capture Orb</div>
+                        <div class="text-[10px] text-slate-400">Owned: ${this.items.captureOrb}</div>
+                    </div>
+                    <button onclick="game.buyItem('captureOrb', 30)" class="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-xs font-bold rounded text-white">30 Dust</button>
+                </div>
+                <div class="p-2 bg-slate-950/60 rounded-lg flex justify-between items-center border border-slate-800">
+                    <div>
+                        <div class="text-xs font-bold text-slate-200">✨ Hyper Orb</div>
+                        <div class="text-[10px] text-slate-400">Owned: ${this.items.hyperOrb}</div>
+                    </div>
+                    <button onclick="game.buyItem('hyperOrb', 70)" class="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-xs font-bold rounded text-white">70 Dust</button>
+                </div>
+                <div class="p-2 bg-slate-950/60 rounded-lg flex justify-between items-center border border-slate-800">
+                    <div>
+                        <div class="text-xs font-bold text-slate-200">🧪 Health Gel</div>
+                        <div class="text-[10px] text-slate-400">Owned: ${this.items.healthGel}</div>
+                    </div>
+                    <button onclick="game.buyItem('healthGel', 25)" class="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-xs font-bold rounded text-white">25 Dust</button>
+                </div>
+            `;
+        }
+
+        buyItem(itemKey, cost) {
+            if (this.dust >= cost) {
+                this.dust -= cost;
+                this.items[itemKey]++;
+                this.audio.playSelect();
+                this.updateHubUI();
+            }
+        }
+
+        restParty() {
+            if (this.dust >= 50) {
+                this.dust -= 50;
+                this.party.forEach(p => p.hp = p.maxHp);
+                this.audio.playSelect();
+                this.updateHubUI();
+            }
+        }
+
+        openCodex() {
+            const container = document.getElementById('codex-grid');
+            container.innerHTML = '';
+
+            CREATURE_DATABASE.forEach(blueprint => {
+                const isDiscovered = this.capturedCodex.has(blueprint.id);
+                const typeInfo = TYPES[blueprint.type];
+
+                const card = document.createElement('div');
+                card.className = `p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center gap-3 ${!isDiscovered ? 'opacity-40' : ''}`;
+
+                card.innerHTML = `
+                    <div class="w-12 h-12 bg-slate-900 rounded-lg flex items-center justify-center">
+                        ${isDiscovered ? `<svg class="w-10 h-10" viewBox="0 0 100 100">${blueprint.svg(TYPES[blueprint.type].color === 'text-red-400' ? '#ff4757' : '#3b82f6')}</svg>` : '❓'}
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-xs text-slate-200 font-pixel">${isDiscovered ? blueprint.name : 'Unknown Fragment'}</span>
+                            ${isDiscovered ? `<span class="text-[9px] font-bold px-1.5 py-0.2 rounded ${typeInfo.bg} ${typeInfo.color}">${typeInfo.name}</span>` : ''}
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-1">${isDiscovered ? blueprint.description : 'Not yet captured in the Rift.'}</p>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            document.getElementById('codex-modal').classList.remove('hidden');
+        }
+
+        closeCodex() {
+            document.getElementById('codex-modal').classList.add('hidden');
+        }
+
+        startEncounter() {
+            // Pick enemy based on floor level
+            const blueprint = CREATURE_DATABASE[Math.floor(Math.random() * CREATURE_DATABASE.length)];
+            const enemyLevel = Math.max(1, Math.floor(this.floor * 1.2));
+            const enemyFrag = new FragmentInstance(blueprint, enemyLevel);
+
+            document.getElementById('hub-screen').classList.add('hidden');
+            document.getElementById('battle-screen').classList.remove('hidden');
+            document.getElementById('battle-screen').classList.add('flex');
+
+            this.battle.initBattle(enemyFrag);
+        }
+    }
+
+    class BattleController {
+        constructor(game) {
+            this.game = game;
+            this.enemy = null;
+            this.isPlayerTurn = true;
+            this.timingInterval = null;
+        }
+
+        getActivePlayerFrag() {
+            return this.game.party[this.game.activePartyIndex];
+        }
+
+        initBattle(enemyFrag) {
+            this.enemy = enemyFrag;
+            this.isPlayerTurn = true;
+
+            const player = this.getActivePlayerFrag();
+
+            this.log(`Encountered wild Level ${this.enemy.level} ${this.enemy.name}!`, 'text-indigo-400');
+            this.renderBattleUI();
+            this.backToMainMenu();
+        }
+
+        log(msg, colorClass = 'text-slate-300') {
+            const logBox = document.getElementById('battle-log');
+            const p = document.createElement('p');
+            p.className = `${colorClass} font-mono text-xs mb-1`;
+            p.textContent = `> ${msg}`;
+            logBox.appendChild(p);
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        renderBattleUI() {
+            const player = this.getActivePlayerFrag();
+            const enemy = this.enemy;
+
+            // Player Render
+            document.getElementById('player-name').textContent = player.name;
+            document.getElementById('player-level').textContent = `Lv. ${player.level}`;
+            document.getElementById('player-hp-text').textContent = `${player.hp} / ${player.maxHp}`;
+            document.getElementById('player-hp-bar').style.width = `${Math.max(0, (player.hp / player.maxHp) * 100)}%`;
+            document.getElementById('player-exp-text').textContent = `${player.exp} / ${player.maxExp}`;
+            document.getElementById('player-exp-bar').style.width = `${Math.max(0, (player.exp / player.maxExp) * 100)}%`;
+
+            const playerType = TYPES[player.type];
+            const pBadge = document.getElementById('player-type-badge');
+            pBadge.textContent = playerType.name;
+            pBadge.className = `px-2 py-0.5 text-[10px] font-bold rounded ${playerType.bg} ${playerType.color} border ${playerType.border} uppercase`;
+
+            document.getElementById('player-svg').innerHTML = player.svgFn(player.SVGColor);
+
+            // Enemy Render
+            document.getElementById('enemy-name').textContent = enemy.name;
+            document.getElementById('enemy-level').textContent = `Lv. ${enemy.level}`;
+            document.getElementById('enemy-hp-text').textContent = `${enemy.hp} / ${enemy.maxHp}`;
+            document.getElementById('enemy-hp-bar').style.width = `${Math.max(0, (enemy.hp / enemy.maxHp) * 100)}%`;
+
+            const enemyType = TYPES[enemy.type];
+            const eBadge = document.getElementById('enemy-type-badge');
+            eBadge.textContent = enemyType.name;
+            eBadge.className = `px-2 py-0.5 text-[10px] font-bold rounded ${enemyType.bg} ${enemyType.color} border ${enemyType.border} uppercase`;
+
+            document.getElementById('enemy-svg').innerHTML = enemy.svgFn(enemy.SVGColor);
+
+            document.getElementById('battle-stage-indicator').textContent = `RIFT FLOOR ${this.game.floor}`;
+            document.getElementById('battle-turn-indicator').textContent = this.isPlayerTurn ? 'YOUR TURN' : 'ENEMY TURN';
+        }
+
+        backToMainMenu() {
+            document.getElementById('battle-main-menu').classList.remove('hidden');
+            document.getElementById('battle-fight-menu').classList.add('hidden');
+            document.getElementById('battle-skill-menu').classList.add('hidden');
+            document.getElementById('battle-capture-menu').classList.add('hidden');
+            document.getElementById('battle-switch-menu').classList.add('hidden');
+        }
+
+        showFightMinigame() {
+            if (!this.isPlayerTurn) return;
+            document.getElementById('battle-main-menu').classList.add('hidden');
+            document.getElementById('battle-fight-menu').classList.remove('hidden');
+            
+            const cursor = document.getElementById('timing-cursor');
+            cursor.classList.remove('timing-paused');
+        }
+
+        executeTimingAttack() {
+            const cursor = document.getElementById('timing-cursor');
+            cursor.classList.add('timing-paused');
+
+            const cursorRect = cursor.getBoundingClientRect();
+            const parentRect = cursor.parentElement.getBoundingClientRect();
+            const relPos = (cursorRect.left - parentRect.left) / parentRect.width;
+
+            // Crit zone between 0.4 and 0.6
+            let isCrit = relPos >= 0.38 && relPos <= 0.62;
+            const player = this.getActivePlayerFrag();
+
+            let baseDmg = Math.max(5, player.atk - this.enemy.def * 0.4);
+            if (isCrit) {
+                baseDmg *= 1.6;
+                this.game.audio.playCrit();
+                this.log(`CRITICAL STRIKE!`, 'text-amber-400 font-bold');
+            } else {
+                this.game.audio.playHit();
+            }
+
+            baseDmg = Math.floor(baseDmg);
+            this.enemy.hp = Math.max(0, this.enemy.hp - baseDmg);
+
+            // Animate enemy hit
+            document.getElementById('enemy-card-box').classList.add('animate-shake');
+            setTimeout(() => document.getElementById('enemy-card-box').classList.remove('animate-shake'), 400);
+
+            this.log(`${player.name} struck ${this.enemy.name} for ${baseDmg} damage!`);
+            this.renderBattleUI();
+
+            setTimeout(() => {
+                if (this.enemy.hp <= 0) {
+                    this.winBattle();
+                } else {
+                    this.startEnemyTurn();
+                }
+            }, 800);
+        }
+
+        showSkillMenu() {
+            if (!this.isPlayerTurn) return;
+            const player = this.getActivePlayerFrag();
+            const grid = document.getElementById('skills-list-grid');
+            grid.innerHTML = '';
+
+            player.skills.forEach(skill => {
+                const btn = document.createElement('button');
+                btn.className = 'p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-left border border-slate-700 flex flex-col justify-between';
+                btn.onclick = () => this.useSkill(skill);
+
+                btn.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-xs text-cyan-300 font-pixel">${skill.name}</span>
+                        <span class="text-[9px] font-mono text-slate-400">${skill.power ? 'PWR ' + skill.power : 'HEAL'}</span>
+                    </div>
+                    <span class="text-[10px] text-slate-400 mt-1">${skill.desc}</span>
+                `;
+                grid.appendChild(btn);
+            });
+
+            document.getElementById('battle-main-menu').classList.add('hidden');
+            document.getElementById('battle-skill-menu').classList.remove('hidden');
+        }
+
+        useSkill(skill) {
+            const player = this.getActivePlayerFrag();
+
+            if (skill.heal && skill.heal > 0) {
+                player.hp = Math.min(player.maxHp, player.hp + skill.heal);
+                this.log(`${player.name} used ${skill.name} and recovered ${skill.heal} HP!`, 'text-emerald-400');
+                this.game.audio.playSelect();
+            } else {
+                let pwr = skill.power || 10;
+                let multiplier = 1.0;
+
+                // Type advantage calculation
+                const skillType = TYPES[skill.type];
+                if (skillType.strongAgainst === this.enemy.type) {
+                    multiplier = 1.5;
+                    this.log(`It's super effective!`, 'text-amber-400');
+                } else if (skillType.weakTo === this.enemy.type) {
+                    multiplier = 0.7;
+                    this.log(`It's not very effective...`, 'text-slate-400');
+                }
+
+                let dmg = Math.floor((player.atk * (pwr / 10) - this.enemy.def * 0.3) * multiplier);
+                dmg = Math.max(4, dmg);
+
+                this.enemy.hp = Math.max(0, this.enemy.hp - dmg);
+                this.game.audio.playHit();
+                this.log(`${player.name} used ${skill.name} dealing ${dmg} damage!`);
+
+                document.getElementById('enemy-card-box').classList.add('animate-shake');
+                setTimeout(() => document.getElementById('enemy-card-box').classList.remove('animate-shake'), 400);
+            }
+
+            this.renderBattleUI();
+
+            setTimeout(() => {
+                if (this.enemy.hp <= 0) {
+                    this.winBattle();
+                } else {
+                    this.startEnemyTurn();
+                }
+            }, 800);
+        }
+
+        showCaptureMenu() {
+            if (!this.isPlayerTurn) return;
+
+            const grid = document.getElementById('capture-orbs-grid');
+            grid.innerHTML = '';
+
+            const hpPct = Math.floor((this.enemy.hp / this.enemy.maxHp) * 100);
+            document.getElementById('capture-hp-percentage').textContent = `${hpPct}%`;
+
+            const orbTypes = [
+                { id: 'captureOrb', name: 'Capture Orb', bonus: 1.0, count: this.game.items.captureOrb },
+                { id: 'hyperOrb', name: 'Hyper Orb', bonus: 2.2, count: this.game.items.hyperOrb }
+            ];
+
+            orbTypes.forEach(orb => {
+                const btn = document.createElement('button');
+                btn.disabled = orb.count <= 0;
+                btn.className = `p-2 rounded-lg text-left border flex justify-between items-center ${orb.count > 0 ? 'bg-slate-800 hover:bg-slate-700 border-slate-700' : 'bg-slate-900 border-slate-800 opacity-50'}`;
+                btn.onclick = () => this.attemptCapture(orb);
+
+                btn.innerHTML = `
+                    <div>
+                        <div class="font-bold text-xs text-amber-300 font-pixel">${orb.name}</div>
+                        <div class="text-[10px] text-slate-400">Inventory: ${orb.count}</div>
+                    </div>
+                    <span class="text-xs font-mono font-bold text-slate-200">THROW</span>
+                `;
+                grid.appendChild(btn);
+            });
+
+            document.getElementById('battle-main-menu').classList.add('hidden');
+            document.getElementById('battle-capture-menu').classList.remove('hidden');
+        }
+
+        attemptCapture(orb) {
+            if (this.game.items[orb.id] <= 0) return;
+            this.game.items[orb.id]--;
+
+            this.log(`Threw a ${orb.name}...`, 'text-amber-400');
+
+            // Catch rate formula
+            const hpFactor = 1 - (this.enemy.hp / this.enemy.maxHp) * 0.7;
+            const catchProb = Math.min(0.95, hpFactor * 0.5 * orb.bonus);
+
+            setTimeout(() => {
+                if (Math.random() < catchProb) {
+                    this.game.audio.playCaptureSuccess();
+                    this.log(`SUCCESS! Wild ${this.enemy.name} was captured!`, 'text-emerald-400 font-bold');
+
+                    this.game.capturedCodex.add(this.enemy.blueprintId);
+                    if (this.game.party.length < 6) {
+                        this.game.party.push(this.enemy);
+                        this.log(`Added ${this.enemy.name} to your active squad!`, 'text-cyan-300');
+                    } else {
+                        this.log(`Squad full! ${this.enemy.name} was converted to 40 Dust.`, 'text-amber-300');
+                        this.game.dust += 40;
+                    }
+
+                    setTimeout(() => this.finishEncounter(true), 1200);
+                } else {
+                    this.game.audio.playHit();
+                    this.log(`Oh no! The wild creature broke free!`, 'text-red-400');
+                    setTimeout(() => this.startEnemyTurn(), 800);
+                }
+            }, 1000);
+        }
+
+        showSwitchMenu() {
+            if (!this.isPlayerTurn) return;
+
+            const grid = document.getElementById('squad-switch-grid');
+            grid.innerHTML = '';
+
+            this.game.party.forEach((frag, idx) => {
+                if (idx === this.game.activePartyIndex) return;
+
+                const btn = document.createElement('button');
+                btn.disabled = frag.hp <= 0;
+                btn.className = `p-2 rounded-lg text-left border flex flex-col justify-between ${frag.hp > 0 ? 'bg-slate-800 hover:bg-slate-700 border-slate-700' : 'bg-slate-900 border-slate-800 opacity-50'}`;
+                btn.onclick = () => {
+                    this.game.activePartyIndex = idx;
+                    this.log(`Switched active Fragment to ${frag.name}!`, 'text-cyan-400');
+                    this.renderBattleUI();
+                    this.startEnemyTurn();
+                };
+
+                btn.innerHTML = `
+                    <div class="font-bold text-xs text-slate-200 font-pixel">${frag.name}</div>
+                    <div class="text-[10px] font-mono text-slate-400">Lv.${frag.level} | HP: ${frag.hp}/${frag.maxHp}</div>
+                `;
+                grid.appendChild(btn);
+            });
+
+            document.getElementById('battle-main-menu').classList.add('hidden');
+            document.getElementById('battle-switch-menu').classList.remove('hidden');
+        }
+
+        startEnemyTurn() {
+            this.isPlayerTurn = false;
+            this.renderBattleUI();
+            this.backToMainMenu();
+
+            this.log(`Enemy ${this.enemy.name} prepares an attack! Get ready to dodge!`, 'text-red-400 font-semibold');
+
+            setTimeout(() => {
+                this.game.dodgeEngine.start(this.enemy.type, this.game.floor);
+            }, 1000);
+        }
+
+        resolveEnemyAttack(hitCount) {
+            const player = this.getActivePlayerFrag();
+
+            let baseDmgPerHit = Math.max(3, Math.floor(this.enemy.atk * 0.4 - player.def * 0.2));
+            let totalDmg = hitCount * baseDmgPerHit;
+
+            if (hitCount === 0) {
+                this.log(`PERFECT DODGE! You avoided all incoming attacks!`, 'text-emerald-400 font-bold');
+            } else {
+                player.hp = Math.max(0, player.hp - totalDmg);
+                this.log(`Took ${hitCount} hits for a total of ${totalDmg} damage!`, 'text-red-400');
+
+                document.getElementById('player-card-box').classList.add('animate-shake');
+                setTimeout(() => document.getElementById('player-card-box').classList.remove('animate-shake'), 400);
+            }
+
+            this.isPlayerTurn = true;
+            this.renderBattleUI();
+
+            if (player.hp <= 0) {
+                this.log(`${player.name} fainted!`, 'text-red-500 font-bold');
+                
+                // Check if remaining party alive
+                const alive = this.game.party.find(p => p.hp > 0);
+                if (alive) {
+                    this.game.activePartyIndex = this.game.party.indexOf(alive);
+                    this.log(`Sent out ${alive.name}!`, 'text-cyan-400');
+                    this.renderBattleUI();
+                } else {
+                    this.gameOver();
+                }
+            }
+        }
+
+        winBattle() {
+            this.game.audio.playCaptureSuccess();
+            const expGained = this.enemy.level * 25;
+            const dustGained = 15 + this.enemy.level * 5;
+
+            this.log(`VICTORY! Defeated ${this.enemy.name}!`, 'text-emerald-400 font-bold');
+            this.log(`Gained ${expGained} EXP and ${dustGained} Fragment Dust!`);
+
+            this.game.dust += dustGained;
+            const player = this.getActivePlayerFrag();
+            const leveledUp = player.gainExp(expGained);
+
+            if (leveledUp) {
+                this.log(`LEVEL UP! ${player.name} grew to Level ${player.level}!`, 'text-amber-300 font-bold');
+            }
+
+            setTimeout(() => this.finishEncounter(false), 1500);
+        }
+
+        finishEncounter(captured = false) {
+            this.game.floor++;
+            if (this.game.floor > this.game.bestFloor) {
+                this.game.bestFloor = this.game.floor;
+            }
+
+            document.getElementById('battle-screen').classList.add('hidden');
+            document.getElementById('hub-screen').classList.remove('hidden');
+            document.getElementById('hub-screen').classList.add('flex');
+
+            this.game.updateHubUI();
+        }
+
+        gameOver() {
+            this.log(`ALL FRAGMENTS FAINTED! RIFT RUN ENDED.`, 'text-red-500 font-bold');
+            setTimeout(() => {
+                alert(`Game Over! You reached Floor ${this.game.floor}. Resetting to Hub floor 1...`);
+                this.game.floor = 1;
+                this.game.party.forEach(p => p.hp = p.maxHp);
+                document.getElementById('battle-screen').classList.add('hidden');
+                document.getElementById('hub-screen').classList.remove('hidden');
+                document.getElementById('hub-screen').classList.add('flex');
+                this.game.updateHubUI();
+            }, 1000);
+        }
+    }
+
+    let game;
+    window.onload = () => {
+        game = new GameController();
+        game.init();
+    };
+    </script>
+</body>
+</html>

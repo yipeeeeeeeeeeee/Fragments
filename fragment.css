@@ -1,25 +1,50 @@
 body {
-	background-color: #17171c;
-}
-
-h1 {
+    background-color: #17171c;
     color: white;
     text-align: center;
+    font-family: Arial, sans-serif;
 }
 
-h3 {
-    color: white;
-    text-align: center;
-}
+
+/* Buttons */
 button {
-	font-size: 18px;
-	padding: 12px 24px;
-	background-color: #8932ed;
-	color: white;
-	border: 1px solid #0056b3;
-	border-radius: 6px;
+    font-size: 18px;
+    padding: 12px 24px;
+    margin: 8px;
+    background-color: #8932ed;
+    color: white;
+    border: 1px solid #0056b3;
+    border-radius: 6px;
 }
 
-button:hover{
-	background-color:red;
+button:hover {
+    background-color: red;
+}
+
+
+/* Hides screens until JavaScript shows them */
+.hidden {
+    display: none;
+}
+
+
+/* Dodge area */
+#dodgeBox {
+    width: 400px;
+    height: 250px;
+    border: 3px solid white;
+    margin: 20px auto;
+    position: relative;
+    overflow: hidden;
+}
+
+
+/* The player inside the dodge box */
+#player {
+    width: 15px;
+    height: 15px;
+    background-color: red;
+    position: absolute;
+    left: 190px;
+    top: 115px;
 }
