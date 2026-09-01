@@ -36,13 +36,31 @@ function movePlayer() {
         playerX += speed;
     }
 
+
+    // Keep player inside the box
+    if (playerX < 0) {
+        playerX = 0;
+    }
+
+    if (playerX > 385) {
+        playerX = 385;
+    }
+
+    if (playerY < 0) {
+        playerY = 0;
+    }
+
+    if (playerY > 235) {
+        playerY = 235;
+    }
+
+
     document.getElementById("player").style.left = playerX + "px";
     document.getElementById("player").style.top = playerY + "px";
 
     requestAnimationFrame(movePlayer);
 }
 
-movePlayer();
 
 // Choose your starting Fragment
 function chooseFragment(name) {
@@ -127,6 +145,5 @@ function enemyTurn() {
 
     document.getElementById("dodge").classList.remove("hidden");
 
-    startDodge();
+    movePlayer();
 }
-

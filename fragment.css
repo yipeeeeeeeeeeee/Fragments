@@ -22,7 +22,7 @@ button:hover {
 }
 
 
-/* Hides screens until JavaScript shows them */
+/* Hides screens until js shows them */
 .hidden {
     display: none;
 }
@@ -47,4 +47,13 @@ button:hover {
     position: absolute;
     left: 190px;
     top: 115px;
+}
+
+#attack {
+    width: 10px;
+    height:10px;
+    background-color: white;
+    position: absolute;
+    left: 0px;
+    top: 100px;
 }
