@@ -11,6 +11,7 @@ let attackSpeed = 1; //self explanetory same for all above
 let hit = false; //makes it so you dont get hit 3 billion times
 let attacking = false;// enemy no attack while false
 let moving = false;//cant move while flase
+let playerMoving = false;
 
 let keys = {};
 
@@ -26,22 +27,27 @@ document.addEventListener("keyup", function(event) {
 });
 function movePlayer() {
 
+    playerMoving = false;
+
     if (keys["w"] || keys["arrowup"]) {
         playerY -= speed;
+        playerMoving = true;
     }
 
     if (keys["s"] || keys["arrowdown"]) {
         playerY += speed;
+        playerMoving = true;
     }
 
     if (keys["a"] || keys["arrowleft"]) {
         playerX -= speed;
+        playerMoving = true;
     }
 
     if (keys["d"] || keys["arrowright"]) {
         playerX += speed;
+        playerMoving = true;
     }
-
 
     // Keep player inside box
     if (playerX < 0) {
@@ -60,13 +66,13 @@ function movePlayer() {
         playerY = 235;
     }
 
-
     document.getElementById("player").style.left = playerX + "px";
     document.getElementById("player").style.top = playerY + "px";
-	
-	if (moving){
-    requestAnimationFrame(movePlayer);
-	}
+
+    if (moving) {
+        requestAnimationFrame(movePlayer);
+    }
+	console.log(playerMoving);
 }
 
 
@@ -203,6 +209,8 @@ function checkCollision() {
 		
 		if (attackY + 10 >= playerY && playerY + 15 >= attackY) {
 			playerHP -= 10;
+			document.getElementById("playerHP").textContent =
+			"Your HP: " + playerHP;
 			hit = true ;
 			console.log(playerHP);
 		}

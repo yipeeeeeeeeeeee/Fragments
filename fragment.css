@@ -57,3 +57,12 @@ button:hover {
     left: 0px;
     top: 100px;
 }
+
+#blueAttack {
+    width: 15px;
+    height: 250px;
+    background-color: blue;
+    position: absolute;
+    left: 0px;
+    top: 0px;
+}
